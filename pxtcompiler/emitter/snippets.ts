@@ -147,12 +147,17 @@ namespace ts.pxtc.service {
             return getParameterDefault(decl.parameters[0]);
         }
 
+        const element = fn as pxtc.SymbolInfo;
+        const params = pxt.blocks.compileInfo(element);
+
         const blocksById = blocksInfo.blocksById
 
         // TODO: move out of getSnippet for general reuse
-
+        const blockParameters = attrs._def?.parameters?.map(param => params.definitionNameToParam[param.name].actualName) || [];
         const includedParameters = decl.parameters ? decl.parameters
-            .filter(param => !param.initializer && !param.questionToken) : []
+            // Only keep required parameters and parameters included in the blockdef
+            .filter(param => (!param.initializer && !param.questionToken)
+                || (blockParameters.indexOf(param.name.getText()) >= 0)) : []
 
         const args = includedParameters
             .map(getParameterDefault)
@@ -164,7 +169,6 @@ namespace ts.pxtc.service {
                     isLiteral: true
                 }) as SnippetNode)
 
-        const element = fn as pxtc.SymbolInfo;
         if (element.attributes.block) {
             if (element.attributes.defaultInstance) {
                 snippetPrefix = element.attributes.defaultInstance;
@@ -221,7 +225,6 @@ namespace ts.pxtc.service {
                     isInstance = true;
                 }
                 else if (element.kind == pxtc.SymbolKind.Method || element.kind == pxtc.SymbolKind.Property) {
-                    const params = pxt.blocks.compileInfo(element);
                     if (params.thisParameter) {
                         let varName: string = undefined
                         if (params.thisParameter.definitionName) {
